@@ -6,6 +6,121 @@ local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
 local Options = Library.Options
 local Toggles = Library.Toggles
 local ESP = loadstring(game:HttpGet("https://pastebin.com/raw/4FzxkWet"))()
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local RenderDistance = 1200
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local RenderStepped = RunService.RenderStepped
+
+local Cache = {}
+local TrinketType = loadstring(game:HttpGet("https://pastebin.com/raw/LEuPtDt9"))()
+
+local ESPEnabled = false
+-- Variables for Auto Pick Up
+local AutoPickupEnabled = false
+local PickupRadius = 10 -- Adjust the range as needed
+
+-- Function to handle Auto Pick Up
+local function AutoPickup()
+    if not AutoPickupEnabled then return end
+
+    for _, object in pairs(Workspace:GetChildren()) do
+        if object:FindFirstChildWhichIsA("ClickDetector", true) and object:FindFirstChild("ID") then
+            local clickDetector = object:FindFirstChildWhichIsA("ClickDetector", true)
+            local distance = (LocalPlayer.Character.HumanoidRootPart.Position - object.Position).Magnitude
+
+            if distance <= PickupRadius then
+                fireclickdetector(clickDetector)
+            end
+        end
+    end
+end
+local function NewDrawing(Type, Properties)
+    local Drawing = Drawing.new(Type)
+    for i, v in pairs(Properties) do
+        Drawing[i] = v
+    end
+    return Drawing
+end
+
+local function NewESP(Object, Info)
+    local ESP = {}
+
+    ESP.Name = NewDrawing('Text', {
+        Center = true,
+        Font = 3, -- Monospace font for a unique style
+        Outline = true,
+        Size = 18,
+        Color = Info.Rare and Color3.fromRGB(255, 0, 0) or Color3.fromRGB(180, 180, 180),
+        Transparency = 1,
+        Text = Info.Name
+    })
+
+    Cache[Object] = { Info = Info, ESP = ESP }
+end
+
+local function RemoveESP(Object)
+    if Cache[Object] then
+        for _, v in pairs(Cache[Object].ESP) do
+            v:Remove()
+        end
+        Cache[Object] = nil
+    end
+end
+
+local function Update()
+    if not ESPEnabled then
+        for _, v in pairs(Cache) do
+            for _, part in pairs(v.ESP) do
+                part.Visible = false
+            end
+        end
+        return
+    end
+
+    for i, v in pairs(Cache) do
+        if not i or not i.Parent then
+            RemoveESP(i)
+            continue
+        end
+
+        local Pos, InView = Camera:WorldToViewportPoint(i.Position)
+
+        if not InView or (Camera.CFrame.Position - i.Position).Magnitude > RenderDistance then
+            for _, part in pairs(v.ESP) do
+                part.Visible = false
+            end
+            continue
+        end
+
+        -- Update ESP visuals
+        v.ESP.Name.Position = Vector2.new(Pos.X, Pos.Y - 20)
+        v.ESP.Name.Visible = true
+    end
+end
+
+for _, v in pairs(Workspace:GetChildren()) do
+    if v:FindFirstChildWhichIsA('ClickDetector', true) and v:FindFirstChild('ID') then
+        local Info = TrinketType(v)
+        NewESP(v, Info)
+    end
+end
+
+
+Workspace.ChildAdded:Connect(function(Object)
+    if Object:FindFirstChildWhichIsA('ClickDetector', true) and Object:FindFirstChild('ID') then
+        local Info = TrinketType(Object)
+        NewESP(Object, Info)
+    end
+end)
+
+RenderStepped:Connect(Update)
+
+-- Toggle Implementation
+
 
 Library.ShowToggleFrameInKeybinds = true
 Library.ShowCustomCursor = true
@@ -31,13 +146,14 @@ local Tabs = {
 -- ESP Tab
 local Visuals = Tabs['ESP Settings']:AddLeftGroupbox('Visuals')
 Visuals:AddToggle('EnableESP', {
-    Text = 'Enable ESP',
+    Text = 'Player ESP',
     Tooltip = 'Toggle ESP on or off.',
     Default = false,
     Callback = function(Value)
         ESP:Toggle(Value) -- Assuming the ESP script exposes a Toggle method
     end
 })
+
 
 -- Main Tab, Player GroupBox
 local LeftGroupBox = Tabs.Main:AddLeftGroupbox('Player')
@@ -117,7 +233,33 @@ LeftGroupBox:AddToggle('FlyToggle', {
         end
     end
 })
+LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("FlyKeybind", {
+    Default = "F", -- Default key
+    Text = "Keybind"
+})
 
+-- Listen for Fly keybind changes
+Options.FlyKeybind:OnChanged(function()
+    local newKey = Options.FlyKeybind.Value
+    UserInputService.InputBegan:Connect(function(input, isProcessed)
+        if isProcessed then return end -- Ignore processed inputs
+        if input.KeyCode == Enum.KeyCode[newKey] then
+            flying = not flying -- Toggle flying state
+            Toggles.FlyToggle:SetValue(flying) -- Update the toggle UI
+
+            if flying then
+                -- Enable flying
+                workspace.Gravity = 0 -- Disable gravity
+                coroutine.wrap(fly)() -- Start the fly coroutine
+            else
+                -- Disable flying
+                workspace.Gravity = originalGravity -- Restore gravity
+                HumanoidRootPart.Velocity = Vector3.zero -- Stop movement
+                -- Reset other fly-related states if needed
+            end
+        end
+    end)
+end)
 -- Fly Speed Slider
 LeftGroupBox:AddSlider('FlySpeed', {
     Text = 'Fly Speed',
@@ -130,7 +272,7 @@ LeftGroupBox:AddSlider('FlySpeed', {
         flySpeed = Value
     end
 })
-
+LeftGroupBox:AddDivider()
 -- Auto Fall Toggle
 LeftGroupBox:AddToggle('AutoFallToggle', {
     Text = 'Auto Fall',
@@ -148,7 +290,19 @@ LeftGroupBox:AddToggle('AutoFallToggle', {
         end
     end
 })
-
+LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("AutoFallKeybind", {
+    Default = "L",
+    Text = "Keybind"
+})
+Options.AutoFallKeybind:OnChanged(function()
+    local newKey = Options.AutoFallKeybind.Value
+    UserInputService.InputBegan:Connect(function(input, isProcessed)
+        if isProcessed then return end
+        if input.KeyCode == Enum.KeyCode[newKey] then
+            Toggles.AutoFallToggle:SetValue(not Toggles.AutoFallToggle.Value)
+        end
+    end)
+end)
 -- Auto Fall Speed Slider
 LeftGroupBox:AddSlider('AutoFallSpeed', {
     Text = 'Auto Fall Speed',
@@ -161,7 +315,7 @@ LeftGroupBox:AddSlider('AutoFallSpeed', {
         fallSpeed = Value
     end
 })
-
+LeftGroupBox:AddDivider()
 LeftGroupBox:AddToggle('NoFallToggle', {
     Text = 'No Fall',
     Tooltip = 'nofall wtf???',
@@ -188,7 +342,20 @@ LeftGroupBox:AddToggle('NoFallToggle', {
         end
     end
 })
-
+LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoFallKeybind", {
+    Default = "K",
+    Text = "Keybind"
+})
+Options.NoFallKeybind:OnChanged(function()
+    local newKey = Options.NoFallKeybind.Value
+    UserInputService.InputBegan:Connect(function(input, isProcessed)
+        if isProcessed then return end
+        if input.KeyCode == Enum.KeyCode[newKey] then
+            Toggles.NoFallToggle:SetValue(not Toggles.NoFallToggle.Value)
+        end
+    end)
+end)
+LeftGroupBox:AddDivider()
 -- Check for players with "Observe" tool and send notifications
 local Players = game:GetService("Players")
 
@@ -204,6 +371,58 @@ local function NotifyPlayersWithTool()
         end
     end
 end
+Visuals:AddToggle('Trinket ESP', {
+    Text = 'Trinket ESP',
+    Tooltip = 'Toggles the ESP feature on or off.',
+    Default = false,
+    Callback = function(Value)
+        ESPEnabled = Value
+        if not ESPEnabled then
+            for _, v in pairs(Cache) do
+                for _, part in pairs(v.ESP) do
+                    part.Visible = false
+                end
+            end
+        end
+    end
+})
+Visuals:AddToggle('FullbrightToggle', {
+    Text = 'Fullbright',
+    Tooltip = 'Maximizes brightness for better visibility.',
+    Default = false,
+    Callback = function(Value)
+        fullBright = Value
+        if fullBright then
+            -- Enable full brightness
+            game.Lighting.Brightness = 2
+            game.Lighting.GlobalShadows = false
+            game.Lighting.Ambient = Color3.new(1, 1, 1)
+        else
+            -- Restore default lighting values (adjust as needed)
+            game.Lighting.Brightness = 1
+            game.Lighting.GlobalShadows = true
+            game.Lighting.Ambient = Color3.new(0.5, 0.5, 0.5)
+        end
+    end
+})
+Visuals:AddToggle('NoFogToggle', {
+    Text = 'No Fog',
+    Tooltip = 'Removes fog from the game world.',
+    Default = false,
+    Callback = function(Value)
+        noFog = Value
+        if noFog then
+            -- Set fog to a very high value instead of infinity
+            game.Lighting.FogEnd = 100000
+            game.Lighting.FogStart = 100000
+        else
+            -- Restore default fog values (adjust as needed)
+            game.Lighting.FogEnd = 1000
+            game.Lighting.FogStart = 0
+        end
+    end
+})
+
 LeftGroupBox:AddToggle('NoClipToggle', {
     Text = 'NoClip',
     Tooltip = 'no, clip!',
@@ -238,7 +457,20 @@ LeftGroupBox:AddToggle('NoClipToggle', {
         end
     end
 })
-
+LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoClipKeybind", {
+    Default = "N",
+    Text = "Keybind"
+})
+Options.NoClipKeybind:OnChanged(function()
+    local newKey = Options.NoClipKeybind.Value
+    UserInputService.InputBegan:Connect(function(input, isProcessed)
+        if isProcessed then return end
+        if input.KeyCode == Enum.KeyCode[newKey] then
+            Toggles.NoClipToggle:SetValue(not Toggles.NoClipToggle.Value)
+        end
+    end)
+end)
+LeftGroupBox:AddDivider()
 local defaultCharName
 
 
@@ -303,6 +535,21 @@ Players.PlayerAdded:Connect(function(player)
         })
     end
 end)
+
+LeftGroupBox:AddToggle('AutoPickupToggle', {
+    Text = 'Auto Pick Up',
+    Tooltip = 'Automatically picks up trinkets when nearby.',
+    Default = false,
+    Callback = function(Value)
+        AutoPickupEnabled = Value
+
+        if AutoPickupEnabled then
+            RunService:BindToRenderStep("AutoPickup", Enum.RenderPriority.Character.Value, AutoPickup)
+        else
+            RunService:UnbindFromRenderStep("AutoPickup")
+        end
+    end
+})
 
 -- Menu bind and unload button in UI settings
 local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
