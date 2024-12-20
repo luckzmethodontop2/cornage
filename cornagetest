@@ -1,0 +1,320 @@
+local repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+local player = game.Players.LocalPlayer
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+local Options = Library.Options
+local Toggles = Library.Toggles
+local ESP = loadstring(game:HttpGet("https://pastebin.com/raw/4FzxkWet"))()
+
+Library.ShowToggleFrameInKeybinds = true
+Library.ShowCustomCursor = true
+Library.NotifySide = "Left"
+
+local Window = Library:CreateWindow({
+    Title = 'cornages successor',
+    Center = true,
+    AutoShow = true,
+    Resizable = true,
+    ShowCustomCursor = false,
+    NotifySide = "Left",
+    TabPadding = 8,
+    MenuFadeTime = 0.2
+})
+
+local Tabs = {
+    Main = Window:AddTab('Main'),
+    ['ESP Settings'] = Window:AddTab('ESP Settings'),
+    ['UI Settings'] = Window:AddTab('UI Settings'),
+}
+
+-- ESP Tab
+local Visuals = Tabs['ESP Settings']:AddLeftGroupbox('Visuals')
+Visuals:AddToggle('EnableESP', {
+    Text = 'Enable ESP',
+    Tooltip = 'Toggle ESP on or off.',
+    Default = false,
+    Callback = function(Value)
+        ESP:Toggle(Value) -- Assuming the ESP script exposes a Toggle method
+    end
+})
+
+-- Main Tab, Player GroupBox
+local LeftGroupBox = Tabs.Main:AddLeftGroupbox('Player')
+
+-- Fly Variables
+local originalGravity = workspace.Gravity
+local flying = false
+local flySpeed = 100 -- Default fly speed
+local fallSpeed = 50 -- Default fall speed
+local LocalPlayer = game.Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+LocalPlayer.CharacterAdded:Connect(function(newCharacter)
+    Character = newCharacter
+    HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+    Humanoid = Character:WaitForChild("Humanoid")
+end)
+
+-- Fly function to move the character
+local function fly()
+    while flying do
+        local MoveDirection = Vector3.new()
+        local cameraCFrame = workspace.CurrentCamera.CFrame
+
+        -- Check movement inputs
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            MoveDirection += cameraCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            MoveDirection -= cameraCFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            MoveDirection -= cameraCFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            MoveDirection += cameraCFrame.RightVector
+        end
+
+        -- Disable auto-fall if the spacebar is pressed
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            MoveDirection += Vector3.new(0, 1, 0)
+            HumanoidRootPart.Velocity = MoveDirection.Unit * flySpeed
+        else
+            -- Apply auto-fall unless the player is holding the spacebar
+            if Toggles.AutoFallToggle and Toggles.AutoFallToggle.Value then
+                HumanoidRootPart.Velocity = Vector3.new(MoveDirection.X * flySpeed, -fallSpeed, MoveDirection.Z * flySpeed)
+            elseif MoveDirection.Magnitude > 0 then
+                -- Normal movement while flying
+                HumanoidRootPart.Velocity = MoveDirection.Unit * flySpeed
+            else
+                -- No input
+                HumanoidRootPart.Velocity = Vector3.zero
+            end
+        end
+
+        RunService.RenderStepped:Wait()
+    end
+end
+
+-- Fly Toggle
+LeftGroupBox:AddToggle('FlyToggle', {
+    Text = 'Fly',
+    Tooltip = 'fly fly fly ! fly fly fly',
+    Default = false,
+    Callback = function(Value)
+        flying = Value
+        if flying then
+            workspace.Gravity = 0 -- Disable gravity when flying
+            coroutine.wrap(fly)() -- Start flying in a separate thread
+        else
+            workspace.Gravity = originalGravity -- Restore gravity
+            HumanoidRootPart.Velocity = Vector3.zero -- Stop movement when not flying
+        end
+    end
+})
+
+-- Fly Speed Slider
+LeftGroupBox:AddSlider('FlySpeed', {
+    Text = 'Fly Speed',
+    Default = 100,
+    Min = 25,
+    Max = 300,
+    Rounding = 0,
+    Tooltip = 'fly high birdie',
+    Callback = function(Value)
+        flySpeed = Value
+    end
+})
+
+-- Auto Fall Toggle
+LeftGroupBox:AddToggle('AutoFallToggle', {
+    Text = 'Auto Fall',
+    Tooltip = 'scarlet aint got nun on me',
+    Default = false,
+    Callback = function(Value)
+        if Value and not flying then
+            RunService:BindToRenderStep("AutoFall", Enum.RenderPriority.Character.Value, function()
+                if HumanoidRootPart and not flying then
+                    HumanoidRootPart.Velocity = Vector3.new(HumanoidRootPart.Velocity.X, -fallSpeed, HumanoidRootPart.Velocity.Z)
+                end
+            end)
+        else
+            RunService:UnbindFromRenderStep("AutoFall")
+        end
+    end
+})
+
+-- Auto Fall Speed Slider
+LeftGroupBox:AddSlider('AutoFallSpeed', {
+    Text = 'Auto Fall Speed',
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 0,
+    Tooltip = 'autofall',
+    Callback = function(Value)
+        fallSpeed = Value
+    end
+})
+
+LeftGroupBox:AddToggle('NoFallToggle', {
+    Text = 'No Fall',
+    Tooltip = 'nofall wtf???',
+    Default = false,
+    Callback = function(Value)
+        local LiveFolder = workspace:FindFirstChild("Live")
+        if LiveFolder then
+            local PlayerModel = LiveFolder:FindFirstChild(LocalPlayer.Name)
+            if PlayerModel then
+                if Value then
+                    -- Rename "Right Leg" to "NoFall"
+                    local RightLeg = PlayerModel:FindFirstChild("Right Leg")
+                    if RightLeg then
+                        RightLeg.Name = "NoFall"
+                    end
+                else
+                    -- Rename "NoFall" back to "Right Leg"
+                    local NoFallLeg = PlayerModel:FindFirstChild("NoFall")
+                    if NoFallLeg then
+                        NoFallLeg.Name = "Right Leg"
+                    end
+                end
+            end
+        end
+    end
+})
+
+-- Check for players with "Observe" tool and send notifications
+local Players = game:GetService("Players")
+
+local function NotifyPlayersWithTool()
+    for _, player in ipairs(Players:GetPlayers()) do
+        local backpack = player:FindFirstChild("Backpack")
+        if backpack and backpack:FindFirstChild("Observe") then
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "Tool Found",
+                Text = player.Name .. " has the 'Observe' tool!",
+                Duration = 5
+            })
+        end
+    end
+end
+LeftGroupBox:AddToggle('NoClipToggle', {
+    Text = 'NoClip',
+    Tooltip = 'no, clip!',
+    Default = false,
+    Callback = function(Value)
+        local character = game.Players.LocalPlayer.Character
+
+        if Value then
+            -- Disable Freefall state
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, false)
+            end
+
+            -- Continuously set CanCollide to false
+            RunService:BindToRenderStep("NoClip", Enum.RenderPriority.Character.Value, function()
+                if character then
+                    for _, v in pairs(character:GetDescendants()) do
+                        if v:IsA("BasePart") then
+                            v.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            -- Enable Freefall state
+            if character and character:FindFirstChild("Humanoid") then
+                character.Humanoid:SetStateEnabled(Enum.HumanoidStateType.Freefall, true)
+            end
+
+            -- Stop disabling CanCollide
+            RunService:UnbindFromRenderStep("NoClip")
+        end
+    end
+})
+
+local defaultCharName
+
+
+local function updateStreamerMode(value)
+    local statGui = player:WaitForChild("PlayerGui"):FindFirstChild("StatGui")
+    local container = statGui and statGui:FindFirstChild("Container")
+    local characterName = container and container:FindFirstChild("CharacterName")
+    local characterNameShadow = characterName and characterName:FindFirstChild("Shadow")
+
+    if not defaultCharName and characterName then
+        defaultCharName = characterName.Text
+    end
+
+    local leaderstats = player:FindFirstChild("leaderstats")
+    local hidden = leaderstats and leaderstats:FindFirstChild("Hidden")
+
+    local deadContainer = statGui and statGui:FindFirstChildOfClass("TextLabel")
+
+    if hidden then
+        hidden.Value = value
+    end
+
+    if characterName and characterNameShadow then
+        characterName.Text = value and "cornage is back bitches" or defaultCharName
+        characterNameShadow.Text = value and "cornage is back bitches" or defaultCharName
+    end
+
+    if deadContainer then
+        deadContainer.Visible = not value
+    end
+end
+
+local streamerModeEnabled = false
+
+-- Function to toggle streamer mode
+local function toggleStreamerMode()
+    streamerModeEnabled = not streamerModeEnabled
+    updateStreamerMode(streamerModeEnabled)
+end
+
+-- Add Streamer Mode toggle to UI
+local StreamerModeToggle = LeftGroupBox:AddToggle('StreamerModeToggle', {
+    Text = 'Streamer Mode',
+    Tooltip = 'stream mode',
+    Default = false,
+    Callback = function(Value)
+        toggleStreamerMode()
+    end
+})
+-- Notify at script load
+NotifyPlayersWithTool()
+
+-- Optional: Detect new players joining and check their inventory
+Players.PlayerAdded:Connect(function(player)
+    player.CharacterAdded:Wait()
+    local backpack = player:WaitForChild("Backpack", 10)
+    if backpack and backpack:FindFirstChild("Observe") then
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "Tool Found",
+            Text = player.Name .. " has the 'Observe' tool!",
+            Duration = 5
+        })
+    end
+end)
+
+-- Menu bind and unload button in UI settings
+local MenuGroup = Tabs['UI Settings']:AddLeftGroupbox('Menu')
+
+MenuGroup:AddDivider()
+MenuGroup:AddLabel("Menu bind"):AddKeyPicker("MenuKeybind", { Default = "RightShift", NoUI = true, Text = "Menu keybind" })
+MenuGroup:AddButton("Unload", function() Library:Unload() end)
+
+Library.ToggleKeybind = Options.MenuKeybind -- Allows you to have a custom keybind for the menu
+
+-- Set up theme and save manager
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+ThemeManager:ApplyToTab(Tabs['UI Settings'])
+SaveManager:BuildConfigSection(Tabs['UI Settings'])
