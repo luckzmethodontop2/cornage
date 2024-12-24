@@ -234,7 +234,7 @@ LeftGroupBox:AddToggle('FlyToggle', {
     end
 })
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("FlyKeybind", {
-    Default = "F", -- Default key
+    Default = "", -- Default key
     Text = "Keybind"
 })
 
@@ -291,7 +291,7 @@ LeftGroupBox:AddToggle('AutoFallToggle', {
     end
 })
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("AutoFallKeybind", {
-    Default = "L",
+    Default = "",
     Text = "Keybind"
 })
 Options.AutoFallKeybind:OnChanged(function()
@@ -343,7 +343,7 @@ LeftGroupBox:AddToggle('NoFallToggle', {
     end
 })
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoFallKeybind", {
-    Default = "K",
+    Default = "",
     Text = "Keybind"
 })
 Options.NoFallKeybind:OnChanged(function()
@@ -458,7 +458,7 @@ LeftGroupBox:AddToggle('NoClipToggle', {
     end
 })
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoClipKeybind", {
-    Default = "N",
+    Default = "",
     Text = "Keybind"
 })
 Options.NoClipKeybind:OnChanged(function()
