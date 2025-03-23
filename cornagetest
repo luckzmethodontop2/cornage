@@ -22,7 +22,95 @@ local ESPEnabled = false
 -- Variables for Auto Pick Up
 local AutoPickupEnabled = false
 local PickupRadius = 10 -- Adjust the range as needed
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
 
+local remotes = {}
+local SECRET_KEY = "plum"
+local TANGO = "tango"
+local VIM = game:GetService("VirtualInputManager")
+
+if game.PlaceId == 5208655184 then
+    -- Wait for ReplicatedStorage to load
+    local ReplicatedStorage = game:GetService("ReplicatedStorage")
+    repeat task.wait() until ReplicatedStorage:FindFirstChild("Assets")
+
+    -- Load the KeyHandler module safely
+    local success, keyhandler = pcall(function()
+        return getgenv().require(ReplicatedStorage.Assets.Modules.KeyHandler)
+    end)
+
+    if not success or not keyhandler then
+        warn("[ERROR] Failed to load KeyHandler module!")
+        return
+    end
+
+    -- Extract key stack safely
+    local stack
+    pcall(function()
+        stack = getupvalues(getrawmetatable(getupvalues(keyhandler)[6]).__index)[1][1][1]
+    end)
+
+    if not stack then
+        warn("[ERROR] Failed to extract KeyHandler stack!")
+        return
+    end
+
+    local getkey = stack[112] -- Reference to the getkey function
+
+    -- Define the known remotes with their key values
+    local keys = {
+        tango = 30195.341357415226,
+        dialogue = 404.5041892976703,
+        fall = 90.32503962905011,
+        dodge = 398.00010021400533
+    }
+
+    -- Hook the getkey function to retrieve, store, and rename remotes
+    local old;
+    old = hookfunction(getkey, function(remote, key)
+        if key == SECRET_KEY then
+            for name, value in pairs(keys) do
+                if not remotes[name] then
+                    repeat
+                        remotes[name] = old(value, key)
+                        task.wait()
+                    until remotes[name]
+                    
+                    -- Set the remote instance's Name to its original name
+                    if typeof(remotes[name]) == "Instance" then
+                        remotes[name].Name = name
+                    end
+
+                    -- Print success message
+                    print("[SUCCESS] Remote Found: " .. name .. " -> " .. tostring(remotes[name]))
+                end
+            end
+
+            -- Save remotes to global scope for debugging
+            if not LPH_OBFUSCATED then
+                getgenv().DEVREMOTES = remotes
+            end
+        end
+
+        return old(remote, key)
+    end)
+
+    -- Send a virtual key event (potentially needed to initialize some remotes)
+    VIM:SendKeyEvent(true, "G", false, game)
+    VIM:SendKeyEvent(false, "G", false, game)
+
+    -- Wait for tango remote to be assigned and print its status
+    task.spawn(function()
+        repeat task.wait() until remotes.tango
+        print("[INFO] Tango remote set!")
+    end)
+end
+
+getgenv().acBypass = true
+print("[INFO] Standalone script initialized successfully.")
+return "Standalone Ready"
 -- Function to handle Auto Pick Up
 local function AutoPickup()
     if not AutoPickupEnabled then return end
