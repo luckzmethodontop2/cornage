@@ -316,45 +316,57 @@ LeftGroupBox:AddSlider('AutoFallSpeed', {
     end
 })
 LeftGroupBox:AddDivider()
+-- No Fall Variables
+local noFallEnabled = false -- Default is OFF
+
+-- No Fall Hook
+local remotePath = game.Workspace.Live.SilverRogueMystic.CharacterHandler.Remotes.fall
+
+local originalFireServer
+originalFireServer = hookfunction(remotePath.FireServer, function(self, ...)
+    if self == remotePath and noFallEnabled then
+        local args = {...}
+        if typeof(args[1]) == "table" then
+            args[1][1] = 0 -- Zero fall height
+            args[1][2] = 0 -- Zero impact damage
+        end
+        return originalFireServer(self, unpack(args))
+    end
+    return originalFireServer(self, ...)
+end)
+
+print("No Fall Script Loaded - Status: " .. (noFallEnabled and "Enabled" or "Disabled"))
+
+-- Add No Fall Toggle UI
 LeftGroupBox:AddToggle('NoFallToggle', {
     Text = 'No Fall',
-    Tooltip = 'nofall wtf???',
+    Tooltip = 'Disables fall damage.',
     Default = false,
     Callback = function(Value)
-        local LiveFolder = workspace:FindFirstChild("Live")
-        if LiveFolder then
-            local PlayerModel = LiveFolder:FindFirstChild(LocalPlayer.Name)
-            if PlayerModel then
-                if Value then
-                    -- Rename "Right Leg" to "NoFall"
-                    local RightLeg = PlayerModel:FindFirstChild("Right Leg")
-                    if RightLeg then
-                        RightLeg.Name = "NoFall"
-                    end
-                else
-                    -- Rename "NoFall" back to "Right Leg"
-                    local NoFallLeg = PlayerModel:FindFirstChild("NoFall")
-                    if NoFallLeg then
-                        NoFallLeg.Name = "Right Leg"
-                    end
-                end
-            end
-        end
+        noFallEnabled = Value
+        print("No Fall is now " .. (noFallEnabled and "Enabled" or "Disabled"))
     end
 })
+
+-- Add No Fall Keybind
 LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoFallKeybind", {
     Default = "",
     Text = "Keybind"
 })
+
+-- Keybind Handling
 Options.NoFallKeybind:OnChanged(function()
     local newKey = Options.NoFallKeybind.Value
     UserInputService.InputBegan:Connect(function(input, isProcessed)
         if isProcessed then return end
         if input.KeyCode == Enum.KeyCode[newKey] then
-            Toggles.NoFallToggle:SetValue(not Toggles.NoFallToggle.Value)
+            noFallEnabled = not noFallEnabled
+            Toggles.NoFallToggle:SetValue(noFallEnabled)
+            print("No Fall toggled via keybind: " .. (noFallEnabled and "Enabled" or "Disabled"))
         end
     end)
 end)
+
 LeftGroupBox:AddDivider()
 -- Check for players with "Observe" tool and send notifications
 local Players = game:GetService("Players")
