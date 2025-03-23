@@ -1,27 +1,3 @@
-local repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
-local player = game.Players.LocalPlayer
-local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
-local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
-local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
-local Options = Library.Options
-local Toggles = Library.Toggles
-local ESP = loadstring(game:HttpGet("https://pastebin.com/raw/4FzxkWet"))()
-local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
-
-local RenderDistance = 1200
-local Camera = Workspace.CurrentCamera
-local LocalPlayer = Players.LocalPlayer
-local RenderStepped = RunService.RenderStepped
-
-local Cache = {}
-local TrinketType = loadstring(game:HttpGet("https://pastebin.com/raw/LEuPtDt9"))()
-
-local ESPEnabled = false
--- Variables for Auto Pick Up
-local AutoPickupEnabled = false
-local PickupRadius = 10 -- Adjust the range as needed
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -111,6 +87,31 @@ end
 getgenv().acBypass = true
 print("[INFO] Standalone script initialized successfully.")
 return "Standalone Ready"
+local repo = 'https://raw.githubusercontent.com/mstudio45/LinoriaLib/main/'
+local player = game.Players.LocalPlayer
+local Library = loadstring(game:HttpGet(repo .. 'Library.lua'))()
+local ThemeManager = loadstring(game:HttpGet(repo .. 'addons/ThemeManager.lua'))()
+local SaveManager = loadstring(game:HttpGet(repo .. 'addons/SaveManager.lua'))()
+local Options = Library.Options
+local Toggles = Library.Toggles
+local ESP = loadstring(game:HttpGet("https://pastebin.com/raw/4FzxkWet"))()
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
+
+local RenderDistance = 1200
+local Camera = Workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+local RenderStepped = RunService.RenderStepped
+
+local Cache = {}
+local TrinketType = loadstring(game:HttpGet("https://pastebin.com/raw/LEuPtDt9"))()
+
+local ESPEnabled = false
+-- Variables for Auto Pick Up
+local AutoPickupEnabled = false
+local PickupRadius = 10 -- Adjust the range as needed
+
 -- Function to handle Auto Pick Up
 local function AutoPickup()
     if not AutoPickupEnabled then return end
@@ -634,64 +635,6 @@ Players.PlayerAdded:Connect(function(player)
             Duration = 5
         })
     end
-end)
--- No Fire (Anti-Burning) Variables
-local noFireEnabled = false -- Default is OFF
-
--- Function to prevent burning effect
-local function antiBurning()
-    while noFireEnabled do
-        task.wait()
-        local Character = LocalPlayer.Character
-        if Character and Character:FindFirstChildWhichIsA("BasePart", true) then
-            for _, obj in pairs(Character:GetChildren()) do
-                if obj.Name == "Burning" and dodgeRemote then
-                    local ohTable1 = {
-                        [1] = 4,
-                        [2] = math.random(),
-                        [3] = false
-                    }
-                    dodgeRemote:FireServer(ohTable1)
-                end
-            end
-        end
-    end
-end
-
--- Add No Fire Toggle UI
-LeftGroupBox:AddToggle('NoFireToggle', {
-    Text = 'No Fire',
-    Tooltip = 'Prevents burning effects.',
-    Default = false,
-    Callback = function(Value)
-        noFireEnabled = Value
-        if noFireEnabled then
-            task.spawn(antiBurning)
-        end
-        print("No Fire is now " .. (noFireEnabled and "Enabled" or "Disabled"))
-    end
-})
-
--- Add No Fire Keybind
-LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoFireKeybind", {
-    Default = "",
-    Text = "Keybind"
-})
-
--- Keybind Handling
-Options.NoFireKeybind:OnChanged(function()
-    local newKey = Options.NoFireKeybind.Value
-    UserInputService.InputBegan:Connect(function(input, isProcessed)
-        if isProcessed then return end
-        if input.KeyCode == Enum.KeyCode[newKey] then
-            noFireEnabled = not noFireEnabled
-            Toggles.NoFireToggle:SetValue(noFireEnabled)
-            if noFireEnabled then
-                task.spawn(antiBurning)
-            end
-            print("No Fire toggled via keybind: " .. (noFireEnabled and "Enabled" or "Disabled"))
-        end
-    end)
 end)
 
 LeftGroupBox:AddToggle('AutoPickupToggle', {
