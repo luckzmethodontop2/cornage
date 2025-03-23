@@ -635,6 +635,64 @@ Players.PlayerAdded:Connect(function(player)
         })
     end
 end)
+-- No Fire (Anti-Burning) Variables
+local noFireEnabled = false -- Default is OFF
+
+-- Function to prevent burning effect
+local function antiBurning()
+    while noFireEnabled do
+        task.wait()
+        local Character = LocalPlayer.Character
+        if Character and Character:FindFirstChildWhichIsA("BasePart", true) then
+            for _, obj in pairs(Character:GetChildren()) do
+                if obj.Name == "Burning" and dodgeRemote then
+                    local ohTable1 = {
+                        [1] = 4,
+                        [2] = math.random(),
+                        [3] = false
+                    }
+                    dodgeRemote:FireServer(ohTable1)
+                end
+            end
+        end
+    end
+end
+
+-- Add No Fire Toggle UI
+LeftGroupBox:AddToggle('NoFireToggle', {
+    Text = 'No Fire',
+    Tooltip = 'Prevents burning effects.',
+    Default = false,
+    Callback = function(Value)
+        noFireEnabled = Value
+        if noFireEnabled then
+            task.spawn(antiBurning)
+        end
+        print("No Fire is now " .. (noFireEnabled and "Enabled" or "Disabled"))
+    end
+})
+
+-- Add No Fire Keybind
+LeftGroupBox:AddLabel("Keybind"):AddKeyPicker("NoFireKeybind", {
+    Default = "",
+    Text = "Keybind"
+})
+
+-- Keybind Handling
+Options.NoFireKeybind:OnChanged(function()
+    local newKey = Options.NoFireKeybind.Value
+    UserInputService.InputBegan:Connect(function(input, isProcessed)
+        if isProcessed then return end
+        if input.KeyCode == Enum.KeyCode[newKey] then
+            noFireEnabled = not noFireEnabled
+            Toggles.NoFireToggle:SetValue(noFireEnabled)
+            if noFireEnabled then
+                task.spawn(antiBurning)
+            end
+            print("No Fire toggled via keybind: " .. (noFireEnabled and "Enabled" or "Disabled"))
+        end
+    end)
+end)
 
 LeftGroupBox:AddToggle('AutoPickupToggle', {
     Text = 'Auto Pick Up',
